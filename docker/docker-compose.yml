@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: techmplish_ats
+    volumes:
+      - postgres_data_v4:/var/lib/postgresql/data
+      - ../backend/migrations/sql:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - internal
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    environment:
+      - DB_HOST=db
+      - DB_PASS=postgres_password
+      - DB_NAME=techmplish_ats
+      - DB_USER=postgres
+      - LLM_PROVIDER=gemini
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "8000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ../data:/data
+      - ../backend:/app
+    networks:
+      - internal
+      - public
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - public
+
+networks:
+  internal:
+  public:
+
+
+volumes:
+  postgres_data_v4:
