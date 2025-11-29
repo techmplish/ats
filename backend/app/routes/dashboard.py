@@ -46,18 +46,17 @@ def get_stats():
         # Total Applications
         res_apps = Database.query("SELECT COUNT(*) FROM applications", fetchone=True)
         total_applications = res_apps[0] if res_apps else 0
-
         # Interviews (Applications in 'Interview' stage)
         res_int = Database.query("SELECT COUNT(*) FROM applications WHERE status = 'Interview'", fetchone=True)
         interviews = res_int[0] if res_int else 0
 
         # Recent Applications (Limit 5)
         recent_apps_rows = Database.query("""
-            SELECT a.id, c.first_name, c.last_name, j.title, a.status, a.created_at 
+            SELECT a.id, c.first_name, c.last_name, j.title, a.status, a.applied_at 
             FROM applications a
             JOIN candidates c ON a.candidate_id = c.id
             JOIN job_postings j ON a.job_id = j.id
-            ORDER BY a.created_at DESC LIMIT 5
+            ORDER BY a.applied_at DESC LIMIT 5
         """, fetchall=True)
         
         recent_apps = []

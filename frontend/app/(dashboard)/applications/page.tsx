@@ -6,52 +6,68 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
+import { Users, Briefcase, MapPin } from "lucide-react"
 
 export default function ApplicationsPage() {
-    const [applications, setApplications] = useState<any[]>([])
+    const [jobs, setJobs] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        const fetchApps = async () => {
+        const fetchJobs = async () => {
             try {
-                const { data } = await api.get("/applications")
-                setApplications(data)
+                const { data } = await api.get("/jobs")
+                // Filter jobs that have at least one application? Or show all?
+                // User asked for "job wise application received", usually implies showing jobs with apps.
+                // But showing all jobs is safer so they can see 0 apps too.
+                setJobs(data)
             } catch (e) {
-                console.error("Failed to fetch applications")
+                console.error("Failed to fetch jobs")
+            } finally {
+                setLoading(false)
             }
         }
-        fetchApps()
+        fetchJobs()
     }, [])
+
+    if (loading) return <div className="p-8">Loading...</div>
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold">Applications</h1>
-                <Button>Upload Application</Button>
+                <h1 className="text-3xl font-bold">Applications by Job</h1>
             </div>
 
-            <div className="grid gap-4">
-                {applications.length === 0 ? (
-                    <p>No applications found.</p>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {jobs.length === 0 ? (
+                    <p className="text-muted-foreground col-span-full">No jobs posted yet.</p>
                 ) : (
-                    applications.map((app) => (
-                        <Card key={app.id}>
+                    jobs.map((job) => (
+                        <Card key={job.id} className="flex flex-col">
                             <CardHeader>
                                 <div className="flex justify-between items-start">
-                                    <div>
-                                        <CardTitle>{app.candidate_name}</CardTitle>
-                                        <p className="text-sm text-muted-foreground mt-1">{app.job_title}</p>
-                                    </div>
-                                    <Badge>{app.stage}</Badge>
+                                    <CardTitle className="text-xl line-clamp-1" title={job.title}>
+                                        {job.title}
+                                    </CardTitle>
+                                    <Badge variant={job.status === 'active' ? 'default' : 'secondary'}>
+                                        {job.status}
+                                    </Badge>
+                                </div>
+                                <div className="text-sm text-muted-foreground flex flex-col gap-1 mt-2">
+                                    <span className="flex items-center gap-2"><Briefcase className="h-4 w-4" /> {job.department}</span>
+                                    <span className="flex items-center gap-2"><MapPin className="h-4 w-4" /> {job.location}</span>
                                 </div>
                             </CardHeader>
-                            <CardContent>
-                                <div className="flex justify-between items-center">
-                                    <p className="text-sm text-muted-foreground">Applied on {new Date(app.created_at).toLocaleDateString()}</p>
-                                    <Link href={`/applications/${app.id}`}>
-                                        <Button variant="outline">View Details</Button>
-                                    </Link>
+                            <CardContent className="flex-1">
+                                <div className="flex items-center gap-2 text-lg font-semibold">
+                                    <Users className="h-5 w-5 text-primary" />
+                                    <span>{job.application_count || 0} Applicants</span>
                                 </div>
                             </CardContent>
+                            <CardFooter>
+                                <Link href={`/jobs/${job.id}`} className="w-full">
+                                    <Button className="w-full" variant="outline">View Applicants</Button>
+                                </Link>
+                            </CardFooter>
                         </Card>
                     ))
                 )}

@@ -66,6 +66,22 @@ class LLMProvider:
         return response.choices[0].message.content
 
     def _chat_local_llama(self, messages, max_tokens):
-        # Placeholder for local inference
-        # In a real scenario, this might hit a local endpoint like OobaBooga or Llama.cpp server
-        return "Local LLaMA is currently disabled on this t3.micro instance."
+        # Support for Ollama
+        try:
+            import requests
+            ollama_base_url = current_app.config.get('OLLAMA_BASE_URL', 'http://host.docker.internal:11434')
+            ollama_model = current_app.config.get('OLLAMA_MODEL', 'llama3')
+            
+            payload = {
+                "model": ollama_model,
+                "messages": messages,
+                "stream": False
+            }
+            
+            response = requests.post(f"{ollama_base_url}/api/chat", json=payload)
+            response.raise_for_status()
+            
+            return response.json()['message']['content']
+        except Exception as e:
+            print(f"Error calling Ollama: {e}")
+            return f"Error: Failed to connect to Ollama. {str(e)}"

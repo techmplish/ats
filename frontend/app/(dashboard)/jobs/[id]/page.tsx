@@ -23,14 +23,19 @@ export default function JobDetailPage() {
     const { id } = useParams()
     const [job, setJob] = useState<Job | null>(null)
     const [loading, setLoading] = useState(true)
+    const [applications, setApplications] = useState<any[]>([])
 
     useEffect(() => {
         const fetchJob = async () => {
             try {
-                const { data } = await api.get(`/jobs/${id}`)
-                setJob(data)
+                const [jobRes, appsRes] = await Promise.all([
+                    api.get(`/jobs/${id}`),
+                    api.get(`/jobs/${id}/applications`)
+                ])
+                setJob(jobRes.data)
+                setApplications(appsRes.data)
             } catch (e) {
-                console.error("Failed to fetch job")
+                console.error("Failed to fetch job details")
             } finally {
                 setLoading(false)
             }
@@ -80,6 +85,37 @@ export default function JobDetailPage() {
                             <p className="whitespace-pre-wrap">{job.requirements}</p>
                         </CardContent>
                     </Card>
+
+                    <Card id="applicants">
+                        <CardHeader>
+                            <CardTitle>Applicants ({applications.length})</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {applications.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">No applications yet.</p>
+                                ) : (
+                                    applications.map((app) => (
+                                        <div key={app.id} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
+                                            <div>
+                                                <p className="font-medium">{app.candidate_name}</p>
+                                                <p className="text-sm text-muted-foreground">{app.email}</p>
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    Applied {new Date(app.applied_at).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline">{app.status}</Badge>
+                                                <Link href={`/applications/${app.id}`}>
+                                                    <Button size="sm" variant="ghost">View</Button>
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 <div className="space-y-6">
@@ -88,7 +124,17 @@ export default function JobDetailPage() {
                             <CardTitle>Quick Actions</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                            <Button className="w-full">View Candidates</Button>
+                            <Button
+                                className="w-full"
+                                onClick={() => document.getElementById('applicants')?.scrollIntoView({ behavior: 'smooth' })}
+                            >
+                                View Candidates
+                            </Button>
+                            <Link href={`/candidates?q=${encodeURIComponent(job.title)}`} className="block">
+                                <Button variant="outline" className="w-full">
+                                    Find Matching Candidates
+                                </Button>
+                            </Link>
                             <Button variant="outline" className="w-full">Share Job Link</Button>
                         </CardContent>
                     </Card>

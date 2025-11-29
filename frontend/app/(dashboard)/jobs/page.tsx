@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Briefcase, Clock } from "lucide-react"
+import { MapPin, Briefcase, Clock, Users } from "lucide-react"
 
 import { PipelineBoard } from "@/components/jobs/PipelineBoard"
 
@@ -75,6 +75,9 @@ export default function JobBoardPage() {
                                                     <div className="flex items-center gap-1"><Briefcase className="h-4 w-4" /> {job.department}</div>
                                                     <div className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {job.location}</div>
                                                     <div className="flex items-center gap-1"><Clock className="h-4 w-4" /> Posted {new Date(job.created_at).toLocaleDateString()}</div>
+                                                    <div className="flex items-center gap-1 font-medium text-primary">
+                                                        <Users className="h-4 w-4" /> {job.application_count || 0} Applicants
+                                                    </div>
                                                 </div>
                                             </div>
                                             <Badge variant={job.status === 'active' ? 'default' : 'secondary'}>{job.status}</Badge>

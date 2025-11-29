@@ -192,3 +192,48 @@ def delete_job(job_id):
         return jsonify({'message': 'Job deleted successfully'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@jobs_bp.route('/<int:job_id>/applications', methods=['GET'])
+@token_required
+def get_job_applications(job_id):
+    """
+    Get all applications for a specific job
+    ---
+    tags:
+      - Jobs
+    security:
+      - Bearer: []
+    parameters:
+      - name: job_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: List of applications
+      500:
+        description: Internal server error
+    """
+    try:
+        from app.db import Database
+        rows = Database.query("""
+            SELECT a.id, c.first_name, c.last_name, c.email, a.status, a.applied_at, c.id
+            FROM applications a
+            JOIN candidates c ON a.candidate_id = c.id
+            WHERE a.job_id = %s
+            ORDER BY a.applied_at DESC
+        """, (job_id,), fetchall=True)
+        
+        apps = []
+        for r in rows:
+            apps.append({
+                'id': r[0],
+                'candidate_name': f"{r[1]} {r[2]}",
+                'email': r[3],
+                'status': r[4],
+                'applied_at': r[5],
+                'candidate_id': r[6]
+            })
+        return jsonify(apps), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

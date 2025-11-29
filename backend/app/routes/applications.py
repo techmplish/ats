@@ -49,6 +49,74 @@ def get_all_applications():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@applications_bp.route('/me', methods=['GET'])
+@token_required
+def get_my_applications():
+    """
+    Get current candidate's applications
+    ---
+    tags:
+      - Applications
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: List of applications
+      404:
+        description: Candidate not found
+      500:
+        description: Internal server error
+    """
+    try:
+        from flask import g
+        from app.db import Database
+        
+        # Get user email
+        user = Database.query("SELECT email FROM users WHERE id = %s", (g.user_id,), fetchone=True)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        email = user[0]
+
+        # Find candidate by email
+        cand = Database.query("SELECT id FROM candidates WHERE email = %s", (email,), fetchone=True)
+        if not cand:
+            return jsonify([]), 200 # No candidate profile means no applications
+            
+        candidate_id = cand[0]
+        
+        # Fetch applications with job details
+        # We need job title, company (hardcoded for now or from job?), status, dates
+        # Assuming jobs table has title. Company is usually the tenant, let's assume 'Techmplish Inc.' or fetch if in jobs table.
+        # Checking schema... jobs table has title, location, department. No company column (single tenant ATS).
+        
+        rows = Database.query(
+            """
+            SELECT a.id, j.title, a.stage, a.applied_at, a.updated_at
+            FROM applications a
+            JOIN job_postings j ON a.job_id = j.id
+            WHERE a.candidate_id = %s
+            ORDER BY a.applied_at DESC
+            """,
+            (candidate_id,),
+            fetchall=True
+        )
+        
+        applications = [
+            {
+                'id': r[0],
+                'job_title': r[1],
+                'company': 'Techmplish Inc.', # Static for now
+                'status': r[2],
+                'applied_at': r[3].strftime('%Y-%m-%d') if r[3] else '',
+                'last_update': r[4].strftime('%Y-%m-%d') if r[4] else ''
+            }
+            for r in rows
+        ]
+        
+        return jsonify(applications), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @applications_bp.route('/<int:app_id>', methods=['GET'])
 @token_required
 def get_application(app_id):

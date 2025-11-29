@@ -54,6 +54,10 @@ services:
       - backend
     networks:
       - public
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+      - /app/.next
 
 networks:
   internal:

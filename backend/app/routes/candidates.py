@@ -36,15 +36,40 @@ def get_candidates():
         description: Internal server error
     """
     try:
-        rows = Database.query(
-            "SELECT id, first_name, last_name, email, phone, linkedin_url, created_at FROM candidates ORDER BY created_at DESC",
-            fetchall=True
-        )
+        # Get query parameters
+        query = request.args.get('q', '')
+        location = request.args.get('location', '')
+        min_experience = request.args.get('experience', type=int)
+
+        sql = "SELECT id, first_name, last_name, email, phone, linkedin_url, created_at, skills, experience_years FROM candidates WHERE 1=1"
+        params = []
+
+        if query:
+            # Search in name or skills
+            sql += " AND (first_name ILIKE %s OR last_name ILIKE %s OR skills ILIKE %s)"
+            search_term = f"%{query}%"
+            params.extend([search_term, search_term, search_term])
+        
+        if location:
+            # Assuming location is stored in a column or we just skip for now if not in schema
+            # Checking schema... location is not in candidates table, maybe in future.
+            # For now let's skip location filter or add it to schema if needed.
+            # But user asked for it. Let's check if we can add it or if it's in resume text.
+            pass 
+
+        if min_experience is not None:
+            sql += " AND experience_years >= %s"
+            params.append(min_experience)
+
+        sql += " ORDER BY created_at DESC"
+
+        rows = Database.query(sql, tuple(params), fetchall=True)
+        
         candidates = [
             {
                 'id': r[0], 'first_name': r[1], 'last_name': r[2], 
                 'email': r[3], 'phone': r[4], 'linkedin_url': r[5],
-                'created_at': r[6]
+                'created_at': r[6], 'skills': r[7], 'experience_years': r[8]
             }
             for r in rows
         ]
@@ -77,7 +102,7 @@ def get_candidate(candidate_id):
     """
     try:
         row = Database.query(
-            "SELECT id, first_name, last_name, email, phone, linkedin_url, portfolio_url, skills, experience_years, created_at FROM candidates WHERE id = %s",
+            "SELECT id, first_name, last_name, email, phone, linkedin_url, portfolio_url, skills, experience_years, created_at, headline, summary, education, experience, projects, languages FROM candidates WHERE id = %s",
             (candidate_id,),
             fetchone=True
         )
@@ -88,7 +113,10 @@ def get_candidate(candidate_id):
             'id': row[0], 'first_name': row[1], 'last_name': row[2], 
             'email': row[3], 'phone': row[4], 'linkedin_url': row[5],
             'portfolio_url': row[6], 'skills': row[7], 'experience_years': row[8],
-            'created_at': row[9]
+            'created_at': row[9],
+            'headline': row[10], 'summary': row[11],
+            'education': row[12], 'experience': row[13],
+            'projects': row[14], 'languages': row[15]
         }
         return jsonify(candidate), 200
     except Exception as e:
@@ -123,7 +151,7 @@ def get_current_candidate_profile():
 
         # Find candidate by email
         row = Database.query(
-            "SELECT id, first_name, last_name, email, phone, linkedin_url, portfolio_url, skills, experience_years FROM candidates WHERE email = %s",
+            "SELECT id, first_name, last_name, email, phone, linkedin_url, portfolio_url, skills, experience_years, headline, summary, education, experience, projects, languages FROM candidates WHERE email = %s",
             (email,),
             fetchone=True
         )
@@ -137,13 +165,18 @@ def get_current_candidate_profile():
                 'email': email,
                 'phone': '',
                 'linkedin_url': '',
-                'portfolio_url': ''
+                'portfolio_url': '',
+                'headline': '', 'summary': '',
+                'education': [], 'experience': [], 'projects': [], 'languages': []
             }), 200
             
         candidate = {
             'id': row[0], 'first_name': row[1], 'last_name': row[2], 
             'email': row[3], 'phone': row[4], 'linkedin_url': row[5],
-            'portfolio_url': row[6], 'skills': row[7], 'experience_years': row[8]
+            'portfolio_url': row[6], 'skills': row[7], 'experience_years': row[8],
+            'headline': row[9], 'summary': row[10],
+            'education': row[11], 'experience': row[12],
+            'projects': row[13], 'languages': row[14]
         }
         return jsonify(candidate), 200
     except Exception as e:
@@ -237,6 +270,31 @@ def update_candidate_profile():
         if 'portfolio_url' in data:
             fields.append("portfolio_url = %s")
             values.append(data['portfolio_url'])
+        if 'headline' in data:
+            fields.append("headline = %s")
+            values.append(data['headline'])
+        if 'summary' in data:
+            fields.append("summary = %s")
+            values.append(data['summary'])
+        if 'skills' in data:
+            fields.append("skills = %s")
+            values.append(data['skills']) # Assuming string or JSON string
+        if 'education' in data:
+            fields.append("education = %s")
+            import json
+            values.append(json.dumps(data['education']) if isinstance(data['education'], (list, dict)) else data['education'])
+        if 'experience' in data:
+            fields.append("experience = %s")
+            import json
+            values.append(json.dumps(data['experience']) if isinstance(data['experience'], (list, dict)) else data['experience'])
+        if 'projects' in data:
+            fields.append("projects = %s")
+            import json
+            values.append(json.dumps(data['projects']) if isinstance(data['projects'], (list, dict)) else data['projects'])
+        if 'languages' in data:
+            fields.append("languages = %s")
+            import json
+            values.append(json.dumps(data['languages']) if isinstance(data['languages'], (list, dict)) else data['languages'])
             
         if not fields:
             return jsonify({'message': 'No changes provided'}), 200

@@ -18,9 +18,11 @@ class JobService:
     def get_all_jobs():
         rows = Database.query(
             """
-            SELECT id, title, department, location, status, created_at, description
-            FROM job_postings 
-            ORDER BY created_at DESC
+            SELECT j.id, j.title, j.department, j.location, j.status, j.created_at, j.description, COUNT(a.id) as application_count
+            FROM job_postings j
+            LEFT JOIN applications a ON j.id = a.job_id
+            GROUP BY j.id, j.title, j.department, j.location, j.status, j.created_at, j.description
+            ORDER BY j.created_at DESC
             """,
             fetchall=True
         )
@@ -28,7 +30,7 @@ class JobService:
             {
                 'id': r[0], 'title': r[1], 'department': r[2], 
                 'location': r[3], 'status': r[4], 'created_at': r[5],
-                'description': r[6]
+                'description': r[6], 'application_count': r[7]
             } 
             for r in rows
         ]

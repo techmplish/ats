@@ -36,6 +36,7 @@ export default function DashboardPage() {
         const fetchStats = async () => {
             try {
                 const { data } = await api.get("/dashboard/stats")
+                console.log("DEBUG: Dashboard stats received:", data)
                 setStats(data)
             } catch (e) {
                 console.error("Failed to fetch dashboard stats", e)
@@ -62,46 +63,54 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.total_applications}</div>
-                        <p className="text-xs text-muted-foreground">All time</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Active Jobs</CardTitle>
-                        <Briefcase className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.active_jobs}</div>
-                        <p className="text-xs text-muted-foreground">Currently hiring</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Interviews</CardTitle>
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.interviews_scheduled}</div>
-                        <p className="text-xs text-muted-foreground">Scheduled</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Candidates</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.total_candidates}</div>
-                        <p className="text-xs text-muted-foreground">Total pool</p>
-                    </CardContent>
-                </Card>
+                <Link href="/applications">
+                    <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.total_applications}</div>
+                            <p className="text-xs text-muted-foreground">All time</p>
+                        </CardContent>
+                    </Card>
+                </Link>
+                <Link href="/jobs">
+                    <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Active Jobs</CardTitle>
+                            <Briefcase className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.active_jobs}</div>
+                            <p className="text-xs text-muted-foreground">Currently hiring</p>
+                        </CardContent>
+                    </Card>
+                </Link>
+                <Link href="/calendar">
+                    <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Interviews</CardTitle>
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.interviews_scheduled}</div>
+                            <p className="text-xs text-muted-foreground">Scheduled</p>
+                        </CardContent>
+                    </Card>
+                </Link>
+                <Link href="/candidates">
+                    <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Candidates</CardTitle>
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.total_candidates}</div>
+                            <p className="text-xs text-muted-foreground">Total pool</p>
+                        </CardContent>
+                    </Card>
+                </Link>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">

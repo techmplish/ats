@@ -5,31 +5,52 @@ import api from "@/lib/api"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useParams } from "next/navigation"
-import { ArrowLeft, Mail, Phone, MapPin, Download } from "lucide-react"
+import { useParams, useRouter } from "next/navigation"
+import { ArrowLeft, Mail, Phone, MapPin, Download, Briefcase } from "lucide-react"
 import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
 
 export default function ApplicationDetailPage() {
     const { id } = useParams()
+    const router = useRouter()
     const [app, setApp] = useState<any>(null)
-    const [analysis, setAnalysis] = useState<any>(null)
+    const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        // Mock fetch for now, assuming endpoint exists or using what we have
-        // In real implementation, we'd need a specific endpoint for application details including candidate info
-        // For now, let's assume we can fetch it.
+        const fetchApp = async () => {
+            try {
+                const { data } = await api.get(`/applications/${id}`)
+                setApp(data)
+            } catch (e) {
+                console.error("Failed to fetch application details")
+            } finally {
+                setLoading(false)
+            }
+        }
+        if (id) fetchApp()
     }, [id])
 
+    if (loading) return <div className="p-8">Loading application details...</div>
+    if (!app) return <div className="p-8">Application not found</div>
+
     return (
-        <div className="h-[calc(100vh-8rem)] flex flex-col">
-            <div className="mb-4 flex items-center justify-between">
+        <div className="h-[calc(100vh-8rem)] flex flex-col space-y-6">
+            <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <Link href="/jobs">
-                        <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
-                    </Link>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => router.back()}
+                        title="Go Back"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
                     <div>
-                        <h1 className="text-2xl font-bold">Candidate Name</h1>
-                        <p className="text-sm text-muted-foreground">Applied for Senior Frontend Developer</p>
+                        <h1 className="text-2xl font-bold">{app.candidate.first_name} {app.candidate.last_name}</h1>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>Applied for {app.job_title}</span>
+                            <Badge variant="outline">{app.status}</Badge>
+                        </div>
                     </div>
                 </div>
                 <div className="flex gap-2">
@@ -38,9 +59,9 @@ export default function ApplicationDetailPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 h-full">
+            <div className="grid grid-cols-2 gap-6 h-full overflow-hidden">
                 {/* Left Column: Resume & Info */}
-                <div className="space-y-6 overflow-y-auto pr-2">
+                <div className="space-y-6 overflow-y-auto pr-2 pb-8">
                     <Card>
                         <CardHeader>
                             <CardTitle>Candidate Info</CardTitle>
@@ -49,16 +70,22 @@ export default function ApplicationDetailPage() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex items-center gap-2 text-sm">
                                     <Mail className="h-4 w-4 text-muted-foreground" />
-                                    email@example.com
+                                    {app.candidate.email}
                                 </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                    <Phone className="h-4 w-4 text-muted-foreground" />
-                                    +1 234 567 890
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                                    New York, USA
-                                </div>
+                                {app.candidate.phone && (
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <Phone className="h-4 w-4 text-muted-foreground" />
+                                        {app.candidate.phone}
+                                    </div>
+                                )}
+                                {app.candidate.linkedin_url && (
+                                    <div className="flex items-center gap-2 text-sm col-span-2">
+                                        <Briefcase className="h-4 w-4 text-muted-foreground" />
+                                        <a href={app.candidate.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                            LinkedIn Profile
+                                        </a>
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -75,7 +102,7 @@ export default function ApplicationDetailPage() {
                 </div>
 
                 {/* Right Column: Activity & AI Analysis */}
-                <div className="space-y-6 overflow-y-auto pl-2">
+                <div className="space-y-6 overflow-y-auto pl-2 pb-8">
                     <Tabs defaultValue="analysis">
                         <TabsList className="w-full">
                             <TabsTrigger value="analysis" className="flex-1">AI Analysis</TabsTrigger>
@@ -87,20 +114,13 @@ export default function ApplicationDetailPage() {
                                 <CardHeader>
                                     <CardTitle className="flex justify-between items-center">
                                         Match Score
-                                        <span className="text-green-600 text-2xl">85%</span>
+                                        <span className="text-green-600 text-2xl">{app.score || 'N/A'}%</span>
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div>
                                         <h4 className="font-semibold mb-2">Summary</h4>
-                                        <p className="text-sm text-muted-foreground">Strong candidate with relevant experience in React and Node.js.</p>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-semibold mb-2">Pros</h4>
-                                        <ul className="list-disc list-inside text-sm text-muted-foreground">
-                                            <li>5 years of React experience</li>
-                                            <li>Led a team of 3</li>
-                                        </ul>
+                                        <p className="text-sm text-muted-foreground">AI analysis not yet generated.</p>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -113,7 +133,9 @@ export default function ApplicationDetailPage() {
                                             <div className="w-2 h-2 mt-2 rounded-full bg-blue-500" />
                                             <div>
                                                 <p className="text-sm font-medium">Applied to job</p>
-                                                <p className="text-xs text-muted-foreground">2 days ago</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {new Date(app.applied_at).toLocaleDateString()}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>

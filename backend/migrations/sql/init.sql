@@ -27,6 +27,12 @@ CREATE TABLE IF NOT EXISTS candidates (
     portfolio_url VARCHAR(255),
     skills TEXT, -- JSON or comma-separated
     experience_years INTEGER,
+    headline TEXT,
+    summary TEXT,
+    education TEXT, -- JSON
+    experience TEXT, -- JSON
+    projects TEXT, -- JSON
+    languages TEXT, -- JSON
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
