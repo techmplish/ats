@@ -6,9 +6,17 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, CheckCircle2, Clock, Loader2 } from "lucide-react"
 
+import { PaginationControls } from "@/components/ui/pagination-controls"
+
 export default function CandidateApplicationsPage() {
     const [applications, setApplications] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const [currentPage, setCurrentPage] = useState(1)
+    const [pageSize, setPageSize] = useState(10)
+
+    const totalItems = applications.length
+    const totalPages = Math.ceil(totalItems / pageSize)
+    const paginatedApplications = applications.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
     useEffect(() => {
         const fetchApps = async () => {
@@ -64,52 +72,68 @@ export default function CandidateApplicationsPage() {
             <h1 className="text-3xl font-bold tracking-tight">My Applications</h1>
 
             <div className="grid gap-4">
-                {applications.length === 0 ? (
+                {paginatedApplications.length === 0 ? (
                     <p className="text-muted-foreground">You haven't applied to any jobs yet.</p>
                 ) : (
-                    applications.map((app) => (
-                        <Card key={app.id}>
-                            <CardContent className="p-6">
-                                <div className="flex items-center justify-between">
-                                    <div className="space-y-1">
-                                        <h3 className="text-xl font-semibold">{app.job_title}</h3>
-                                        <p className="text-sm text-muted-foreground">{app.company}</p>
+                    <>
+                        {paginatedApplications.map((app) => (
+                            <Card key={app.id}>
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-1">
+                                            <h3 className="text-xl font-semibold">{app.job_title}</h3>
+                                            <p className="text-sm text-muted-foreground">{app.company}</p>
+                                        </div>
+                                        <Badge className={getStatusColor(app.status)} variant="secondary">
+                                            {app.status}
+                                        </Badge>
                                     </div>
-                                    <Badge className={getStatusColor(app.status)} variant="secondary">
-                                        {app.status}
-                                    </Badge>
-                                </div>
 
-                                <div className="mt-6 flex items-center gap-6 text-sm text-muted-foreground">
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4" />
-                                        Applied: {app.applied_at}
+                                    <div className="mt-6 flex items-center gap-6 text-sm text-muted-foreground">
+                                        <div className="flex items-center gap-2">
+                                            <Calendar className="h-4 w-4" />
+                                            Applied: {app.applied_at}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Clock className="h-4 w-4" />
+                                            Last Update: {app.last_update}
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <Clock className="h-4 w-4" />
-                                        Last Update: {app.last_update}
+
+                                    <div className="mt-6 pt-6 border-t">
+                                        <div className="flex items-center gap-2">
+                                            <CheckCircle2 className={`h-5 w-5 ${isStepActive(app.status, 'applied') ? 'text-green-500' : 'text-gray-300'}`} />
+                                            <span className={`font-medium ${isStepActive(app.status, 'applied') ? '' : 'text-muted-foreground'}`}>Application Received</span>
+
+                                            <div className={`h-px flex-1 mx-4 ${isStepActive(app.status, 'screening') ? 'bg-green-500' : 'bg-gray-200'}`} />
+
+                                            <div className={`h-3 w-3 rounded-full ${isStepActive(app.status, 'screening') ? 'bg-green-500' : 'bg-gray-200'}`} />
+                                            <span className={`text-sm ${isStepActive(app.status, 'screening') ? 'font-medium' : 'text-muted-foreground'}`}>Screening</span>
+
+                                            <div className={`h-px flex-1 mx-4 ${isStepActive(app.status, 'interview') ? 'bg-green-500' : 'bg-gray-200'}`} />
+
+                                            <div className={`h-3 w-3 rounded-full ${isStepActive(app.status, 'interview') ? 'bg-green-500' : 'bg-gray-200'}`} />
+                                            <span className={`text-sm ${isStepActive(app.status, 'interview') ? 'font-medium' : 'text-muted-foreground'}`}>Interview</span>
+                                        </div>
                                     </div>
-                                </div>
+                                </CardContent>
+                            </Card>
+                        ))}
 
-                                <div className="mt-6 pt-6 border-t">
-                                    <div className="flex items-center gap-2">
-                                        <CheckCircle2 className={`h-5 w-5 ${isStepActive(app.status, 'applied') ? 'text-green-500' : 'text-gray-300'}`} />
-                                        <span className={`font-medium ${isStepActive(app.status, 'applied') ? '' : 'text-muted-foreground'}`}>Application Received</span>
-
-                                        <div className={`h-px flex-1 mx-4 ${isStepActive(app.status, 'screening') ? 'bg-green-500' : 'bg-gray-200'}`} />
-
-                                        <div className={`h-3 w-3 rounded-full ${isStepActive(app.status, 'screening') ? 'bg-green-500' : 'bg-gray-200'}`} />
-                                        <span className={`text-sm ${isStepActive(app.status, 'screening') ? 'font-medium' : 'text-muted-foreground'}`}>Screening</span>
-
-                                        <div className={`h-px flex-1 mx-4 ${isStepActive(app.status, 'interview') ? 'bg-green-500' : 'bg-gray-200'}`} />
-
-                                        <div className={`h-3 w-3 rounded-full ${isStepActive(app.status, 'interview') ? 'bg-green-500' : 'bg-gray-200'}`} />
-                                        <span className={`text-sm ${isStepActive(app.status, 'interview') ? 'font-medium' : 'text-muted-foreground'}`}>Interview</span>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))
+                        {applications.length > 0 && (
+                            <PaginationControls
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                pageSize={pageSize}
+                                totalItems={totalItems}
+                                onPageChange={setCurrentPage}
+                                onPageSizeChange={(size) => {
+                                    setPageSize(size)
+                                    setCurrentPage(1)
+                                }}
+                            />
+                        )}
+                    </>
                 )}
             </div>
         </div>

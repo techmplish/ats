@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { PaginationControls } from "@/components/ui/pagination-controls"
 import { Search, MapPin, Briefcase, Loader2 } from "lucide-react"
 import {
     Dialog,
@@ -24,6 +25,8 @@ interface Job {
     location: string
     type: string
     description: string
+    application_status?: string
+    application_id?: number
 }
 
 export default function CandidateJobsPage() {
@@ -32,19 +35,21 @@ export default function CandidateJobsPage() {
     const [searchTerm, setSearchTerm] = useState("")
     const [selectedJob, setSelectedJob] = useState<Job | null>(null)
     const [applying, setApplying] = useState(false)
+    const [withdrawing, setWithdrawing] = useState(false)
     const { toast } = useToast()
 
-    useEffect(() => {
-        const fetchJobs = async () => {
-            try {
-                const { data } = await api.get("/jobs")
-                setJobs(data)
-            } catch (error) {
-                console.error("Failed to fetch jobs", error)
-            } finally {
-                setLoading(false)
-            }
+    const fetchJobs = async () => {
+        try {
+            const { data } = await api.get("/jobs")
+            setJobs(data)
+        } catch (error) {
+            console.error("Failed to fetch jobs", error)
+        } finally {
+            setLoading(false)
         }
+    }
+
+    useEffect(() => {
         fetchJobs()
     }, [])
 
@@ -58,6 +63,7 @@ export default function CandidateJobsPage() {
                 description: `You have successfully applied for ${selectedJob.title}.`,
             })
             setSelectedJob(null)
+            fetchJobs() // Refresh to update status
         } catch (error: any) {
             toast({
                 title: "Application Failed",
@@ -69,20 +75,85 @@ export default function CandidateJobsPage() {
         }
     }
 
+    const handleWithdraw = async (appId: number) => {
+        if (!confirm("Are you sure you want to withdraw your application?")) return
+        setWithdrawing(true)
+        try {
+            await api.put(`/applications/${appId}/withdraw`)
+            toast({
+                title: "Application Withdrawn",
+                description: "Your application has been withdrawn.",
+            })
+            fetchJobs()
+        } catch (error: any) {
+            toast({
+                title: "Withdrawal Failed",
+                description: error.response?.data?.error || "Could not withdraw application.",
+                variant: "destructive"
+            })
+        } finally {
+            setWithdrawing(false)
+        }
+    }
+
     const filteredJobs = jobs.filter(job =>
         job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.department.toLowerCase().includes(searchTerm.toLowerCase())
+        job.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.description.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
+    // Pagination Logic
+    const [currentPage, setCurrentPage] = useState(1)
+    const [pageSize, setPageSize] = useState(10)
+
+    // Reset page when search changes
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [searchTerm])
+
+    const totalItems = filteredJobs.length
+    const totalPages = Math.ceil(totalItems / pageSize)
+    const paginatedJobs = filteredJobs.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+    const getActionButton = (job: Job) => {
+        const isApplied = job.application_status && job.application_status.toLowerCase() !== 'withdrawn'
+        const isWithdrawn = job.application_status && job.application_status.toLowerCase() === 'withdrawn'
+
+        if (isApplied) {
+            return (
+                <>
+                    <Button className="w-full" disabled variant="secondary">Already Applied</Button>
+                    <Button
+                        variant="outline"
+                        className="text-red-500 hover:text-red-600"
+                        onClick={() => handleWithdraw(job.application_id!)}
+                        disabled={withdrawing}
+                    >
+                        Withdraw
+                    </Button>
+                </>
+            )
+        } else if (isWithdrawn) {
+            return (
+                <Button className="w-full" onClick={() => setSelectedJob(job)}>Re-apply</Button>
+            )
+        } else {
+            return (
+                <Button className="w-full" onClick={() => setSelectedJob(job)}>Apply Now</Button>
+            )
+        }
+    }
+
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-4">
+        <div className="max-w-6xl space-y-8 pb-10">
+            <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tight">Find Your Next Role</h1>
                 <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Search by job title or department..."
-                        className="pl-10 max-w-md"
+                        placeholder="Search by job title, department, company or location..."
+                        className="pl-10 h-10"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -90,38 +161,64 @@ export default function CandidateJobsPage() {
             </div>
 
             {loading ? (
-                <div>Loading jobs...</div>
-            ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {filteredJobs.map((job) => (
-                        <Card key={job.id} className="flex flex-col">
-                            <CardHeader>
-                                <div className="flex justify-between items-start">
-                                    <CardTitle className="text-xl">{job.title}</CardTitle>
-                                    <Badge variant="secondary">{job.department}</Badge>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="flex-1 space-y-4">
-                                <div className="flex items-center text-sm text-muted-foreground gap-4">
-                                    <div className="flex items-center gap-1">
-                                        <MapPin className="h-4 w-4" />
-                                        {job.location}
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <Briefcase className="h-4 w-4" />
-                                        Full-time
-                                    </div>
-                                </div>
-                                <p className="text-sm line-clamp-3 text-muted-foreground">
-                                    {job.description}
-                                </p>
-                            </CardContent>
-                            <CardFooter>
-                                <Button className="w-full" onClick={() => setSelectedJob(job)}>Apply Now</Button>
-                            </CardFooter>
-                        </Card>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <div key={i} className="h-48 rounded-xl bg-muted/20 animate-pulse" />
                     ))}
                 </div>
+            ) : (
+                <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {paginatedJobs.map((job) => (
+                            <Card key={job.id} className="flex flex-col transition-all hover:shadow-md">
+                                <CardHeader>
+                                    <div className="flex justify-between items-start">
+                                        <CardTitle className="text-xl line-clamp-1" title={job.title}>{job.title}</CardTitle>
+                                        <Badge variant="secondary" className="shrink-0">{job.department}</Badge>
+                                    </div>
+                                    <div className="flex gap-4 text-sm text-muted-foreground mt-2">
+                                        <div className="flex items-center gap-1">
+                                            <MapPin className="h-3 w-3" />
+                                            {job.location}
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <Briefcase className="h-3 w-3" />
+                                            Full-time
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="flex-1">
+                                    <p className="text-sm text-muted-foreground line-clamp-3">
+                                        {job.description}
+                                    </p>
+                                </CardContent>
+                                <CardFooter>
+                                    {getActionButton(job)}
+                                </CardFooter>
+                            </Card>
+                        ))}
+                    </div>
+
+                    {filteredJobs.length === 0 && (
+                        <div className="text-center py-12 text-muted-foreground">
+                            No jobs found matching your search.
+                        </div>
+                    )}
+
+                    {filteredJobs.length > 0 && (
+                        <PaginationControls
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            pageSize={pageSize}
+                            totalItems={totalItems}
+                            onPageChange={setCurrentPage}
+                            onPageSizeChange={(size) => {
+                                setPageSize(size)
+                                setCurrentPage(1)
+                            }}
+                        />
+                    )}
+                </>
             )}
 
             <Dialog open={!!selectedJob} onOpenChange={(open) => !open && setSelectedJob(null)}>

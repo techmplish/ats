@@ -185,12 +185,18 @@ export default function CandidateProfilePage() {
 
                     <Button variant="outline" onClick={async () => {
                         try {
-                            // We need candidate ID. Since we are 'me', we assume backend handles it or we fetch it.
-                            // But the download endpoint needs candidate_id.
-                            // Let's fetch 'me' first to get ID.
-                            const { data } = await api.get("/candidates/me")
-                            if (data.id) {
-                                window.open(`${api.defaults.baseURL}/resume/download/${data.id}`, '_blank')
+                            const { data: me } = await api.get("/candidates/me")
+                            if (me.id) {
+                                const response = await api.get(`/resume/download/${me.id}`, {
+                                    responseType: 'blob'
+                                })
+                                const url = window.URL.createObjectURL(new Blob([response.data]))
+                                const link = document.createElement('a')
+                                link.href = url
+                                link.setAttribute('download', `resume_${me.first_name}_${me.last_name}.pdf`) // Default name, backend header might override
+                                document.body.appendChild(link)
+                                link.click()
+                                link.remove()
                             }
                         } catch (e) {
                             toast({ title: "Error", description: "Could not download resume", variant: "destructive" })

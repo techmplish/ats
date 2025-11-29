@@ -33,7 +33,31 @@ def get_jobs():
         description: Internal server error
     """
     try:
-        jobs = JobService.get_all_jobs()
+        # Check for token manually to support optional auth
+        from flask import current_app
+        import jwt
+        from app.db import Database
+        
+        candidate_id = None
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith("Bearer "):
+            try:
+                token = auth_header.split(" ")[1]
+                # Manual decode
+                data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
+                user_id = data['sub']
+                
+                # Get candidate_id for this user
+                user = Database.query("SELECT email FROM users WHERE id = %s", (user_id,), fetchone=True)
+                if user:
+                    cand = Database.query("SELECT id FROM candidates WHERE email = %s", (user[0],), fetchone=True)
+                    if cand:
+                        candidate_id = cand[0]
+            except Exception as e:
+                print(f"Token decode failed in jobs: {e}")
+                pass # Ignore invalid tokens for public view
+                
+        jobs = JobService.get_all_jobs(candidate_id)
         return jsonify(jobs), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500

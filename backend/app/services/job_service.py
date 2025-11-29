@@ -15,22 +15,29 @@ class JobService:
         return {"message": "Job created"}
 
     @staticmethod
-    def get_all_jobs():
-        rows = Database.query(
-            """
-            SELECT j.id, j.title, j.department, j.location, j.status, j.created_at, j.description, COUNT(a.id) as application_count
+    def get_all_jobs(candidate_id=None):
+        # Base query
+        query = """
+            SELECT j.id, j.title, j.department, j.location, j.status, j.created_at, j.description, 
+                   COUNT(all_apps.id) as application_count,
+                   my_app.status as application_status,
+                   my_app.id as application_id
             FROM job_postings j
-            LEFT JOIN applications a ON j.id = a.job_id
-            GROUP BY j.id, j.title, j.department, j.location, j.status, j.created_at, j.description
+            LEFT JOIN applications all_apps ON j.id = all_apps.job_id
+            LEFT JOIN applications my_app ON j.id = my_app.job_id AND my_app.candidate_id = %s
+            GROUP BY j.id, j.title, j.department, j.location, j.status, j.created_at, j.description, my_app.status, my_app.id
             ORDER BY j.created_at DESC
-            """,
-            fetchall=True
-        )
+        """
+        
+        rows = Database.query(query, (candidate_id,), fetchall=True)
+        
         return [
             {
                 'id': r[0], 'title': r[1], 'department': r[2], 
-                'location': r[3], 'status': r[4], 'created_at': r[5],
-                'description': r[6], 'application_count': r[7]
+                'location': r[3], 'status': r[4], 'created_at': r[5].isoformat() if r[5] else None,
+                'description': r[6], 'application_count': r[7],
+                'application_status': r[8],
+                'application_id': r[9]
             } 
             for r in rows
         ]
