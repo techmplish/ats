@@ -24,7 +24,7 @@ class AuthService:
         return jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
 
     @staticmethod
-    def register_user(email, password, first_name, last_name, role_name='user'):
+    def register_user(email, password, first_name, last_name, role_name='user', company_name=None):
         # Check if user exists
         existing = Database.query("SELECT id FROM users WHERE email = %s", (email,), fetchone=True)
         if existing:
@@ -42,10 +42,10 @@ class AuthService:
         # Insert user
         Database.execute(
             """
-            INSERT INTO users (email, password_hash, first_name, last_name, role_id)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO users (email, password_hash, first_name, last_name, role_id, company_name)
+            VALUES (%s, %s, %s, %s, %s, %s)
             """,
-            (email, hashed_pw, first_name, last_name, role_id)
+            (email, hashed_pw, first_name, last_name, role_id, company_name)
         )
         
         # Get the new user ID
@@ -56,7 +56,7 @@ class AuthService:
     def login_user(email, password):
         user = Database.query(
             """
-            SELECT u.id, u.password_hash, r.name as role_name 
+            SELECT u.id, u.password_hash, r.name as role_name, u.first_name, u.last_name, u.email, u.company_name
             FROM users u 
             JOIN roles r ON u.role_id = r.id 
             WHERE u.email = %s
@@ -68,19 +68,31 @@ class AuthService:
         if not user:
             raise ValueError("Invalid credentials")
         
-        user_id, password_hash, role_name = user
+        user_id, password_hash, role_name, first_name, last_name, email, company_name = user
         
         if not AuthService.check_password(password, password_hash):
             raise ValueError("Invalid credentials")
             
         token = AuthService.generate_token(user_id, role_name)
-        return {'token': token, 'role': role_name, 'user_id': user_id}
+        return {
+            'token': token, 
+            'refresh_token': token, # Mock refresh token for now
+            'role': role_name, 
+            'user': {
+                'id': user_id,
+                'email': email,
+                'role': role_name,
+                'first_name': first_name,
+                'last_name': last_name,
+                'company_name': company_name
+            }
+        }
 
     @staticmethod
     def get_user_by_id(user_id):
         return Database.query(
             """
-            SELECT u.id, u.email, u.first_name, u.last_name, r.name as role 
+            SELECT u.id, u.email, u.first_name, u.last_name, r.name as role, u.company_name
             FROM users u 
             JOIN roles r ON u.role_id = r.id 
             WHERE u.id = %s
@@ -88,3 +100,26 @@ class AuthService:
             (user_id,),
             fetchone=True
         )
+
+    @staticmethod
+    def update_user_profile(user_id, data):
+        """Updates user profile fields like name, company_name"""
+        fields = []
+        values = []
+        
+        if 'first_name' in data:
+            fields.append("first_name = %s")
+            values.append(data['first_name'])
+        if 'last_name' in data:
+            fields.append("last_name = %s")
+            values.append(data['last_name'])
+        if 'company_name' in data:
+            fields.append("company_name = %s")
+            values.append(data['company_name'])
+            
+        if not fields:
+            return
+            
+        values.append(user_id)
+        query = f"UPDATE users SET {', '.join(fields)} WHERE id = %s"
+        Database.execute(query, tuple(values))

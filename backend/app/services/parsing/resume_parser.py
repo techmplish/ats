@@ -86,14 +86,34 @@ class ResumeParser:
 
         # 2. Fallback to Basic Regex/Keyword Parsing
         print("DEBUG: Using basic regex parser.")
+        print(f"DEBUG: Extracted text length: {len(text)}")
+        print(f"DEBUG: First 500 chars: {text[:500]!r}")
         
-        # Heuristics for name (first line)
         lines = [l.strip() for l in text.split('\n') if l.strip()]
-        first_line = lines[0] if lines else ""
-        name_parts = first_line.split(' ')
-        first_name = name_parts[0] if name_parts else ""
-        last_name = " ".join(name_parts[1:]) if len(name_parts) > 1 else ""
         
+        # Improved Name Extraction Heuristic
+        first_name = ""
+        last_name = ""
+        
+        # Iterate through first few lines to find a likely name
+        # Skip lines that look like headers or contact info
+        for i in range(min(10, len(lines))):
+            line = lines[i]
+            # Check if line is not a common header or email/phone
+            if ResumeParser._is_likely_name(line):
+                name_parts = line.split(' ')
+                print(f"DEBUG: Potential name found: {line}")
+                if len(name_parts) >= 2:
+                    first_name = name_parts[0]
+                    last_name = " ".join(name_parts[1:])
+                    break
+                elif len(name_parts) == 1:
+                    first_name = name_parts[0]
+                    # If single name, maybe look at next line? But standard is full name on one line.
+                    break
+        
+        print(f"DEBUG: Extracted Name: {first_name} {last_name}")
+
         # Heuristic for experience
         exp_match = re.search(r'(\d+)\+?\s*years?', text, re.IGNORECASE)
         experience_years = int(exp_match.group(1)) if exp_match else 0
@@ -114,7 +134,7 @@ class ResumeParser:
             'first_name': first_name,
             'last_name': last_name,
             'experience_years': experience_years,
-            'headline': first_line[:100],
+            'headline': f"{first_name} {last_name} - Resume", # Default headline
             'summary': text[:500] + "...",
             'education': education,
             'experience': experience,
@@ -122,6 +142,21 @@ class ResumeParser:
             'languages': []
         }
         return data
+
+    @staticmethod
+    def _is_likely_name(line):
+        """Check if a line is likely a name (not email, phone, header, or too long)"""
+        if len(line.split(' ')) > 5: return False # Names usually aren't sentences
+        if '@' in line: return False # Email
+        if re.search(r'\d', line): return False # Phone or address usually has digits
+        
+        keywords = ['resume', 'curriculum', 'vitae', 'cv', 'profile', 'summary', 'education', 'experience', 'skills', 'projects', 'contact']
+        if line.lower() in keywords: return False
+        
+        # Check for capitalization (heuristic: Name usually Title Case or ALL CAPS)
+        # But some PDFs extraction might be messy. 
+        # Let's assume non-keyword short line at top is name.
+        return True
 
     @staticmethod
     def _extract_sections(text):

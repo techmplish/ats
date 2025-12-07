@@ -93,7 +93,8 @@ def register():
             password=password,
             first_name=first_name,
             last_name=last_name,
-            role_name=data.get('role', 'user') # Allow setting role for dev/demo purposes
+            role_name=data.get('role', 'user'), # Allow setting role for dev/demo purposes
+            company_name=data.get('company_name')
         )
         return jsonify({'message': 'User registered successfully', 'user_id': user_id}), 201
     except ValueError as e:
@@ -164,6 +165,36 @@ def login():
 @auth_bp.route('/me', methods=['GET'])
 @token_required
 def get_me():
+    """
+    Get current user profile
+    ---
+    tags:
+      - Authentication
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: User profile retrieved successfully
+        schema:
+          type: object
+          properties:
+            id:
+              type: integer
+            email:
+              type: string
+            first_name:
+              type: string
+            last_name:
+              type: string
+            role:
+              type: string
+      401:
+        description: Unauthorized
+      404:
+        description: User not found
+      500:
+        description: Internal server error
+    """
     try:
         user = AuthService.get_user_by_id(g.user_id)
         if not user:
@@ -174,7 +205,43 @@ def get_me():
             'email': user[1],
             'first_name': user[2],
             'last_name': user[3],
-            'role': user[4]
+            'role': user[4],
+            'company_name': user[5]
         }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@auth_bp.route('/me', methods=['PUT'])
+@token_required
+def update_me():
+    """
+    Update current user profile
+    ---
+    tags:
+      - Authentication
+    security:
+      - Bearer: []
+    parameters:
+      - in: body
+        name: body
+        schema:
+          type: object
+          properties:
+            first_name:
+              type: string
+            last_name:
+              type: string
+            company_name:
+              type: string
+    responses:
+      200:
+        description: Profile updated
+      500:
+        description: Internal server error
+    """
+    data = request.get_json()
+    try:
+        AuthService.update_user_profile(g.user_id, data)
+        return jsonify({'message': 'Profile updated successfully'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500

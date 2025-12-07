@@ -91,7 +91,7 @@ def get_my_applications():
         
         rows = Database.query(
             """
-            SELECT a.id, j.title, a.stage, a.applied_at, a.updated_at
+            SELECT a.id, j.title, a.status, a.applied_at, a.updated_at
             FROM applications a
             JOIN job_postings j ON a.job_id = j.id
             WHERE a.candidate_id = %s
@@ -280,6 +280,29 @@ def create_application():
             return jsonify({'error': 'You have already applied for this job'}), 400
             
         CandidateService.create_application(data['job_id'], candidate_id)
+        
+        # Send Email Alerts
+        from app.services.email_service import EmailService
+        
+        # Get candidate details for email
+        cand_details = Database.query("SELECT first_name, email FROM candidates WHERE id = %s", (candidate_id,), fetchone=True)
+        # Get job details for email
+        job_details = Database.query("SELECT title, created_by FROM job_postings WHERE id = %s", (data['job_id'],), fetchone=True)
+        
+        if cand_details and job_details:
+            cand_name = cand_details[0]
+            cand_email = cand_details[1]
+            job_title = job_details[0]
+            recruiter_id = job_details[1]
+            
+            # Notify Candidate
+            EmailService.send_application_received_email(cand_email, cand_name, job_title)
+            
+            # Notify Recruiter
+            recruiter_email_row = Database.query("SELECT email FROM users WHERE id = %s", (recruiter_id,), fetchone=True)
+            if recruiter_email_row:
+                EmailService.send_application_alert_email(recruiter_email_row[0], cand_name, job_title)
+
         return jsonify({'message': 'Application submitted successfully'}), 201
     except ValueError as e:
         return jsonify({'error': str(e)}), 400

@@ -92,6 +92,30 @@ def get_candidate_stats():
     responses:
       200:
         description: Candidate dashboard metrics
+        schema:
+          type: object
+          properties:
+            applications_submitted:
+              type: integer
+            interviews_scheduled:
+              type: integer
+            profile_completeness:
+              type: integer
+            recent_applications:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  job_title:
+                    type: string
+                  company:
+                    type: string
+                  status:
+                    type: string
+                  created_at:
+                    type: string
       500:
         description: Internal server error
     """
@@ -147,7 +171,7 @@ def get_candidate_stats():
             SELECT a.id, j.title, j.department, a.status, a.applied_at 
             FROM applications a
             JOIN job_postings j ON a.job_id = j.id
-            WHERE a.candidate_id = %s
+            WHERE a.candidate_id = %s AND a.status != 'Withdrawn'
             ORDER BY a.applied_at DESC LIMIT 5
         """, (candidate_id,), fetchall=True)
         print(f"DEBUG: Recent apps count: {len(recent_apps_rows) if recent_apps_rows else 0}")

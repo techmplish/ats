@@ -48,17 +48,21 @@ def get_jobs():
                 user_id = data['sub']
                 
                 # Get candidate_id for this user
-                user = Database.query("SELECT email FROM users WHERE id = %s", (user_id,), fetchone=True)
-                if user:
-                    cand = Database.query("SELECT id FROM candidates WHERE email = %s", (user[0],), fetchone=True)
-                    if cand:
-                        candidate_id = cand[0]
+                # Ensure user_id is valid integer
+                user_id = int(user_id)
+                cand = Database.query("SELECT id FROM candidates WHERE email = (SELECT email FROM users WHERE id=%s)", (user_id,), fetchone=True)
+                if cand:
+                    candidate_id = cand[0]
             except Exception as e:
-                print(f"Token decode failed in jobs: {e}")
+                # print(f"Token decode failed in jobs: {e}")
                 pass # Ignore invalid tokens for public view
                 
-        jobs = JobService.get_all_jobs(candidate_id)
-        return jsonify(jobs), 200
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 10, type=int)
+        status = request.args.get('status')
+        
+        result = JobService.get_all_jobs(candidate_id, page, limit, status)
+        return jsonify(result), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

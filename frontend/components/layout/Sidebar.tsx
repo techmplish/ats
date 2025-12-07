@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, Briefcase, Users, Calendar, Settings, FileText, Upload, Shield } from "lucide-react"
+import { LayoutDashboard, Briefcase, Users, Calendar, Settings, FileText, Upload, Shield, BarChart } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 
 export function Sidebar() {
@@ -19,7 +19,9 @@ export function Sidebar() {
         { name: 'Jobs & Pipeline', href: '/jobs', icon: Briefcase },
         { name: 'Candidates', href: '/candidates/new', icon: Users },
         { name: 'Applications', href: '/applications', icon: FileText },
+        { name: 'Reports', href: '/reports', icon: BarChart },
         { name: "Calendar", href: "/calendar", icon: Calendar },
+        { name: "Profile", href: "/portal/profile", icon: Users },
         { name: "AI Assistant", href: "/rag", icon: Users },
         { name: "Settings", href: "/settings", icon: Settings },
     ]

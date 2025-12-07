@@ -15,11 +15,9 @@ export default function ApplicationsPage() {
     useEffect(() => {
         const fetchJobs = async () => {
             try {
-                const { data } = await api.get("/jobs")
-                // Filter jobs that have at least one application? Or show all?
-                // User asked for "job wise application received", usually implies showing jobs with apps.
-                // But showing all jobs is safer so they can see 0 apps too.
-                setJobs(data)
+                // Pass high limit to ensure we get enough jobs for the dashboard view
+                const { data } = await api.get("/jobs?limit=100")
+                setJobs(data.jobs || [])
             } catch (e) {
                 console.error("Failed to fetch jobs")
             } finally {

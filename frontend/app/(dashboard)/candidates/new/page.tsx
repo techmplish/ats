@@ -24,6 +24,42 @@ export default function NewCandidatePage() {
         experience_years: ""
     })
 
+    const [uploading, setUploading] = useState(false)
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.[0]) return
+        setUploading(true)
+        try {
+            const file = e.target.files[0]
+            const uploadData = new FormData()
+            uploadData.append("file", file)
+            // No candidate_id needed for parsing-only mode
+
+            const res = await api.post("/resume/upload", uploadData, {
+                headers: { "Content-Type": "multipart/form-data" }
+            })
+
+            const parsed = res.data.parsed_data
+            if (parsed) {
+                setFormData(prev => ({
+                    ...prev,
+                    first_name: parsed.first_name || prev.first_name,
+                    last_name: parsed.last_name || prev.last_name,
+                    email: parsed.email || prev.email,
+                    phone: parsed.phone || prev.phone,
+                    skills: Array.isArray(parsed.skills) ? parsed.skills.join(", ") : (parsed.skills || prev.skills),
+                    experience_years: parsed.experience_years ? String(parsed.experience_years) : prev.experience_years
+                }))
+                toast({ title: "Resume Parsed", description: "Form auto-filled from resume." })
+            }
+        } catch (error) {
+            console.error("Upload failed", error)
+            toast({ title: "Upload Failed", description: "Could not parse resume.", variant: "destructive" })
+        } finally {
+            setUploading(false)
+        }
+    }
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value })
     }
@@ -58,7 +94,15 @@ export default function NewCandidatePage() {
         <div className="max-w-2xl mx-auto">
             <Card>
                 <CardHeader>
-                    <CardTitle>Add New Candidate</CardTitle>
+                    <CardTitle className="flex justify-between items-center">
+                        Add New Candidate
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => document.getElementById('cv-upload')?.click()}>
+                                {uploading ? "Parsing..." : "Upload CV"}
+                            </Button>
+                            <input id="cv-upload" type="file" className="hidden" accept=".pdf,.docx" onChange={handleFileUpload} />
+                        </div>
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">

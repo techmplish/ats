@@ -38,10 +38,35 @@ export default function CandidateJobsPage() {
     const [withdrawing, setWithdrawing] = useState(false)
     const { toast } = useToast()
 
+    // Resume Selection State
+    const [resumes, setResumes] = useState<any[]>([])
+    const [loadingResumes, setLoadingResumes] = useState(false)
+    const [selectedResumeId, setSelectedResumeId] = useState<number | null>(null)
+
+    const fetchResumes = async () => {
+        setLoadingResumes(true)
+        try {
+            // Need candidate ID first? Usually /me endpoint or just depend on user context
+            // Assuming current user is candidate.
+            const { data: me } = await api.get("/candidates/me")
+            if (me && me.id) {
+                const { data: history } = await api.get(`/resume/history/${me.id}`)
+                setResumes(history)
+                if (history.length > 0) {
+                    setSelectedResumeId(history[0].id) // Default to latest
+                }
+            }
+        } catch (error) {
+            console.error("Failed to fetch resumes", error)
+        } finally {
+            setLoadingResumes(false)
+        }
+    }
+
     const fetchJobs = async () => {
         try {
-            const { data } = await api.get("/jobs")
-            setJobs(data)
+            const { data } = await api.get("/jobs?limit=100")
+            setJobs(data.jobs || [])
         } catch (error) {
             console.error("Failed to fetch jobs", error)
         } finally {
@@ -51,13 +76,17 @@ export default function CandidateJobsPage() {
 
     useEffect(() => {
         fetchJobs()
+        fetchResumes()
     }, [])
 
     const handleApply = async () => {
         if (!selectedJob) return
         setApplying(true)
         try {
-            await api.post("/applications", { job_id: selectedJob.id })
+            await api.post("/applications", {
+                job_id: selectedJob.id,
+                resume_id: selectedResumeId
+            })
             toast({
                 title: "Application Submitted",
                 description: `You have successfully applied for ${selectedJob.title}.`,
@@ -229,17 +258,51 @@ export default function CandidateJobsPage() {
                             {selectedJob?.department} • {selectedJob?.location}
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="py-4 max-h-[60vh] overflow-y-auto">
-                        <h4 className="font-medium mb-2">Job Description</h4>
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                            {selectedJob?.description}
-                        </p>
+                    <div className="py-4 max-h-[60vh] overflow-y-auto space-y-4">
+                        <div>
+                            <h4 className="font-medium mb-2">Job Description</h4>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                {selectedJob?.description}
+                            </p>
+                        </div>
+
+                        <div className="border-t pt-4">
+                            <h4 className="font-medium mb-3">Select Resume</h4>
+                            {loadingResumes ? (
+                                <div className="text-sm text-muted-foreground">Loading resumes...</div>
+                            ) : resumes.length === 0 ? (
+                                <div className="text-sm text-yellow-600 bg-yellow-50 p-3 rounded-md">
+                                    No resumes found. Please upload a resume in your profile first.
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {resumes.map((res: any) => (
+                                        <div key={res.id}
+                                            className={`flex items-center justify-between p-3 rounded-md border cursor-pointer transition-colors ${selectedResumeId === res.id ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                                            onClick={() => setSelectedResumeId(res.id)}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={`h-4 w-4 rounded-full border border-primary flex items-center justify-center ${selectedResumeId === res.id ? 'bg-primary' : ''}`}>
+                                                    {selectedResumeId === res.id && <div className="h-2 w-2 rounded-full bg-white" />}
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-sm">{res.file_name}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Uploaded: {new Date(res.uploaded_at).toLocaleDateString()}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setSelectedJob(null)}>Cancel</Button>
-                        <Button onClick={handleApply} disabled={applying}>
+                        <Button onClick={handleApply} disabled={applying || (resumes.length > 0 && !selectedResumeId)}>
                             {applying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Confirm Application
+                            Submit Application
                         </Button>
                     </DialogFooter>
                 </DialogContent>

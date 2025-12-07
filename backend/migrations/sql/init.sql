@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     first_name VARCHAR(100),
     last_name VARCHAR(100),
+    company_name VARCHAR(255),
     role_id INTEGER REFERENCES roles(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -55,6 +56,10 @@ CREATE TABLE IF NOT EXISTS job_postings (
     location VARCHAR(100),
     description TEXT,
     requirements TEXT,
+    salary_min DECIMAL(10, 2),
+    salary_max DECIMAL(10, 2),
+    currency VARCHAR(10) DEFAULT 'USD',
+    custom_job_id VARCHAR(50), -- e.g. JOB-101
     status VARCHAR(50) DEFAULT 'active', -- active, closed, draft
     created_by INTEGER REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -8,6 +8,7 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import { ArrowLeft, MapPin, Briefcase } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { ConfirmModal } from "@/components/ui/confirm-modal"
 
 interface Job {
     id: number
@@ -43,6 +44,25 @@ export default function JobDetailPage() {
         if (id) fetchJob()
     }, [id])
 
+    const handleShare = () => {
+        const url = window.location.href
+        navigator.clipboard.writeText(url)
+        alert("Job link copied to clipboard!")
+    }
+
+    const [isCloseModalOpen, setIsCloseModalOpen] = useState(false)
+
+    const handleStatusChange = async (newStatus: string) => {
+        try {
+            await api.put(`/jobs/${id}`, { status: newStatus })
+            setJob(prev => prev ? { ...prev, status: newStatus } : null)
+            setIsCloseModalOpen(false)
+        } catch (error) {
+            console.error("Failed to update status", error)
+            alert("Failed to update status")
+        }
+    }
+
     if (loading) return <div className="p-8">Loading...</div>
     if (!job) return <div className="p-8">Job not found</div>
 
@@ -62,8 +82,12 @@ export default function JobDetailPage() {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline">Edit Job</Button>
-                    <Button variant="destructive">Close Job</Button>
+                    <Button variant="outline" onClick={() => alert("Edit functionality coming soon!")}>Edit Job</Button>
+                    {job.status === 'active' ? (
+                        <Button variant="destructive" onClick={() => setIsCloseModalOpen(true)}>Close Job</Button>
+                    ) : (
+                        <Button variant="outline" onClick={() => handleStatusChange('active')}>Reopen Job</Button>
+                    )}
                 </div>
             </div>
 
@@ -135,11 +159,19 @@ export default function JobDetailPage() {
                                     Find Matching Candidates
                                 </Button>
                             </Link>
-                            <Button variant="outline" className="w-full">Share Job Link</Button>
+                            <Button variant="outline" className="w-full" onClick={handleShare}>Share Job Link</Button>
                         </CardContent>
                     </Card>
                 </div>
             </div>
+
+            <ConfirmModal
+                isOpen={isCloseModalOpen}
+                onClose={() => setIsCloseModalOpen(false)}
+                onConfirm={() => handleStatusChange('closed')}
+                title="Close Job Posting"
+                description="Are you sure you want to close this job? It will no longer be visible to candidates."
+            />
         </div>
     )
 }

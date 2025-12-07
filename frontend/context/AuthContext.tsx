@@ -8,6 +8,8 @@ interface User {
     id: number
     email: string
     role: 'admin' | 'recruiter' | 'candidate'
+    first_name?: string
+    last_name?: string
 }
 
 interface AuthContextType {
@@ -15,6 +17,7 @@ interface AuthContextType {
     loading: boolean
     login: (token: string, refreshToken: string, user: User) => void
     logout: () => void
+    updateUser: (user: Partial<User>) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -49,6 +52,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
+    const updateUser = (userData: Partial<User>) => {
+        if (!user) return
+        const newUser = { ...user, ...userData }
+        setUser(newUser)
+        localStorage.setItem('user', JSON.stringify(newUser))
+    }
+
     const logout = () => {
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
@@ -58,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
             {children}
         </AuthContext.Provider>
     )
